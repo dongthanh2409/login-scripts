@@ -8,7 +8,7 @@ from selenium.webdriver.common.by import By
 
 logging.basicConfig(filename="newfile.log",
                     format='%(asctime)s %(message)s',
-                    filemode='w')
+                    filemode='a')
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -18,20 +18,36 @@ username = 'ngdieuthuy.ulis@gmail.com'
 password = 'Cmt001198001541@@'
 # email
 sender = 'dongthanh.2409@gmail.com'
-receiver = ['dongthanh.24091@gmail.com', 'dongthanh.2409@gmail.com']
-interval_in_minutes = 1
+all_receivers = ['dongthanh.24091@gmail.com', 'dongthanh.2409@gmail.com', 'ngdieuthuy.ulis@gmail.com']
+interval_in_seconds = 60
 
 
 def check():
-    driver = webdriver.Chrome()
-    driver.get(url)
-    login(driver)
-    slot = find_slot(driver)
-    if slot is not None:
-        message = build_message(slot)
-        send_email(message)
-    logger.info('No available slot')
-    driver.quit()
+    try:
+        driver = webdriver.Chrome()
+        driver.implicitly_wait(15)
+        driver.get(url)
+        login(driver)
+        slot = find_slot(driver)
+        if slot is not None:
+            message = build_message(slot)
+            send_email(all_receivers, message)
+        elif number_of_unavailable_slots_looks_wrong(driver) or confirm_button_not_pop_up(driver):
+            send_email(['dongthanh.2409@gmail.com'], "Manual check required!!!")
+        logger.info('No available slot')
+        driver.quit()
+    except Exception as e:
+        logger.exception("Something else went wrong", e)
+
+
+def number_of_unavailable_slots_looks_wrong(driver):
+    unavailable_time_slots = driver.find_elements(By.CSS_SELECTOR, '.tls-time-group--item .-unavailable')
+    return len(unavailable_time_slots) % 16 != 0
+
+
+def confirm_button_not_pop_up(driver):
+    confirm_button = driver.find_element(By.XPATH,'//*[@id="app"]/div[4]/div[3]/div[2]/div/div/div[2]/div[4]/div/button')
+    return confirm_button is None
 
 
 def login(driver):
@@ -43,11 +59,11 @@ def login(driver):
     login_button.click()
 
 
-def send_email(message):
+def send_email(receivers, message):
     s = smtplib.SMTP('smtp.gmail.com', 587)
     s.starttls()
     s.login(sender, "thvt rfhb bmpz wnjp")
-    s.sendmail(sender, receiver, "Hello, \n" + message)
+    s.sendmail(sender, receivers, "Hello, \n" + message)
     s.quit()
     logger.info('sent email with body ' + message)
 
@@ -75,7 +91,7 @@ def find_slot(driver):
     return Slot(date.text, time_slot.text)
 
 
-schedule.every(interval_in_minutes).minutes.do(check)
+schedule.every(interval_in_seconds).seconds.do(check)
 
 while True:
     schedule.run_pending()
