@@ -1,9 +1,11 @@
 import logging
 import smtplib
+import sys
 import time
 
 import schedule
 from selenium import webdriver
+from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 
 logging.basicConfig(filename="newfile.log",
@@ -25,29 +27,65 @@ interval_in_seconds = 60
 def check():
     try:
         driver = webdriver.Chrome()
-        driver.implicitly_wait(15)
         driver.get(url)
         login(driver)
+        driver.implicitly_wait(15)
+
+        confirm_button = find_confirm_button(driver)
+        if confirm_button_pop_up(confirm_button):
+            click_button(driver, confirm_button)
+        else:
+            notify_one()
+
+        time.sleep(5)
+        next_button = find_next_button(driver)
+        if next_button is not None:
+            click_button(driver, next_button)
+
+        if number_of_unavailable_slots_looks_wrong(driver):
+            notify_one()
+            sys.exit()
+
         slot = find_slot(driver)
         if slot is not None:
             message = build_message(slot)
-            send_email(all_receivers, message)
-        elif number_of_unavailable_slots_looks_wrong(driver) or confirm_button_not_pop_up(driver):
-            send_email(['dongthanh.2409@gmail.com'], "Manual check required!!!")
+            notify_all(message)
+
         logger.info('No available slot')
         driver.quit()
     except Exception as e:
         logger.exception("Something else went wrong", e)
 
 
+def find_next_button(driver):
+    return driver.find_element(By.XPATH, '//*[@id="app"]/div[4]/div[2]/div[2]/div[2]/button')
+
+
+def click_button(driver, button):
+    ActionChains(driver).move_to_element(button).click(button).perform()
+
+
+def notify_all(message):
+    send_email(all_receivers, message)
+
+
+def notify_one():
+    send_email(['dongthanh.2409@gmail.com'], "Manual check required!!!")
+
+
+def find_confirm_button(driver):
+    return driver.find_element(By.XPATH, '//*[@id="app"]/div[4]/div[3]/div[2]/div/div/div[2]/div[4]/div/button')
+
+
 def number_of_unavailable_slots_looks_wrong(driver):
     unavailable_time_slots = driver.find_elements(By.CSS_SELECTOR, '.tls-time-group--item .-unavailable')
-    return len(unavailable_time_slots) % 16 != 0
+    unavailable_time_slots_count = len(unavailable_time_slots)
+    print(unavailable_time_slots_count)
+    return unavailable_time_slots_count % 16 != 0
 
 
-def confirm_button_not_pop_up(driver):
-    confirm_button = driver.find_element(By.XPATH,'//*[@id="app"]/div[4]/div[3]/div[2]/div/div/div[2]/div[4]/div/button')
-    return confirm_button is None
+def confirm_button_pop_up(confirm_button):
+    return confirm_button is not None
 
 
 def login(driver):
