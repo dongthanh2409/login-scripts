@@ -29,7 +29,7 @@ def check():
         driver = webdriver.Chrome()
         driver.get(url)
         login(driver)
-        driver.implicitly_wait(15)
+        driver.implicitly_wait(45)
 
         confirm_button = find_confirm_button(driver)
         if confirm_button_pop_up(confirm_button):
@@ -37,10 +37,16 @@ def check():
         else:
             notify_one()
 
+        driver.execute_script("window.scrollBy(0, 500);")
         time.sleep(5)
-        next_button = find_next_button(driver)
-        if next_button is not None:
-            click_button(driver, next_button)
+        next_button_1 = find_next_button_1(driver)
+        if next_button_1 is not None:
+            click_button(driver, next_button_1)
+
+        time.sleep(5)
+        next_button_2 = find_next_button_2(driver)
+        if next_button_2 is not None:
+            click_button(driver, next_button_2)
 
         if number_of_unavailable_slots_looks_wrong(driver):
             notify_one()
@@ -57,8 +63,12 @@ def check():
         logger.exception("Something else went wrong", e)
 
 
-def find_next_button(driver):
+def find_next_button_1(driver):
     return driver.find_element(By.XPATH, '//*[@id="app"]/div[4]/div[2]/div[2]/div[2]/button')
+
+
+def find_next_button_2(driver):
+    return driver.find_element(By.XPATH, '//*[@id="app"]/div[4]/div[2]/div[2]/div[2]/button[2]')
 
 
 def click_button(driver, button):
@@ -80,7 +90,6 @@ def find_confirm_button(driver):
 def number_of_unavailable_slots_looks_wrong(driver):
     unavailable_time_slots = driver.find_elements(By.CSS_SELECTOR, '.tls-time-group--item .-unavailable')
     unavailable_time_slots_count = len(unavailable_time_slots)
-    print(unavailable_time_slots_count)
     return unavailable_time_slots_count % 16 != 0
 
 
@@ -128,6 +137,8 @@ def find_slot(driver):
     date = parent_element.find_element(By.CLASS_NAME, 'tls-time-group--header-title')
     return Slot(date.text, time_slot.text)
 
+
+# check()
 
 schedule.every(interval_in_seconds).seconds.do(check)
 
